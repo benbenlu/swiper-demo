@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title></title>
+    <style>
+        .slider {
+            overflow: hidden;
+            background-color: #000;
+        }
+        .slider .slide-group {
+            position: relative;
+            font-size: 0;
+            white-space: nowrap;
+            -webkit-transition: all 0s linear;
+            -moz-transition: all 0s linear;
+            transition: all 0s linear;
+        }
+        .slider .slide-group .slide {
+            display: inline-block;
+            width: 100%;
+            height: 100%;
+            font-size: 14px;
+            vertical-align: top;
+        }
+        .slider .slider-indicator {width:100%; position:absolute; bottom:8px; text-align:center; background:0 0;}
+        .slider .slider-indicator>.indicator {display:inline-block; width:10px; height:10px; margin:1px 3px; cursor:pointer; background:#ccc; border:1px solid #fff; border-radius:50%;}
+        .slider .slider-indicator>.indicator.active {background:#29bc98;}
+    </style>
+</head>
+<body>
+<div class="slider pos-relative" id="ordersSlider" data-slidershowTimer="300">
+    <div class="slide-group" style="min-height:120px;">
+        <div class="slide" ><img src="images/img1.png" width="100%"></div>
+        <div class="slide" ><img src="images/img2.png" width="100%"></div>
+        <div class="slide" ><img src="images/img3.png" width="100%"></div>
+    </div>
+    <div class="slider-indicator" >
+        <div  class="indicator active" ></div>
+        <div  class="indicator " ></div>
+        <div  class="indicator " ></div>
+    </div>
+</div>
+
+
+
+<script>
+
+    !(function () {
+        'use strict';
+
+        var pageX;
+        var pageY;
+        var deltaX;
+        var deltaY;
+        var offsetX;
+        var lastSlide;
+        var startTime;
+        var resistance;
+        var isScrolling;
+        var timer;
+
+        var slider         = document.getElementsByClassName('slide-group')[0];
+        var firstItem      = slider.querySelector('.slide');
+        var scrollableArea = firstItem.offsetWidth * slider.children.length;
+        var sliderWidth    = slider.offsetWidth;
+        var slideNumber    = 0;
+        var animated = false;
+
+        // 向下插入一个slide1
+        var slide1 = document.createElement("div");
+        slide1.innerHTML = '<img src="images/img1.png" width="100%">';
+        slide1.classList.add('slide');
+        slider.appendChild( slide1, firstItem[firstItem.length - 1] );
+
+        // 向上插入一个slide3
+        var slideLast = document.createElement('div');
+        slideLast.innerHTML = '<img src="images/img3.png" width="100%">';
+        slideLast.classList.add('slide');
+        slider.insertBefore( slideLast, firstItem );
+        slider.style.webkitTransform = 'translate3d(-304px,0,0)';
+
+
+        //  获取轮播的目标元素
+        var getSlider = function (target) {
+            var i;
+            var sliders = document.querySelectorAll('.slider > .slide-group');
+
+            for (; target && target !== document; target = target.parentNode) {
+                for (i = sliders.length; i--;) {
+                    if (sliders[i] === target) {
+                        return target;
+                    }
+                }
+            }
+        };
+
+        // 图片对应的指示符变化
+        var changeIndicator = function(index){
+            if(!slider.parentElement.querySelector('.slider-indicator .indicator'))return;
+            var indicator = slider.parentElement.querySelector('.slider > .slider-indicator');
+
+            for(var k = indicator.children.length; k--;){
+                indicator.children[k].classList.remove('active');
+            }
+
+            console.log('slideNumber',slideNumber);
+            if(index >= -3 && index < 0){
+                indicator.children[Math.abs(index) - 1].classList.add('active');
+            }else {
+                indicator.children[0].classList.add('active');
+            }
+        };
+
+        // 获取目标元素在X轴上的移动位移
+        var getScroll = function () {
+            if ('webkitTransform' in slider.style) {
+                var translate3d = slider.style.webkitTransform.match(/translate3d\(([^,]*)/);
+                var ret = translate3d ? translate3d[1] : 0;
+                return parseInt(ret, 10);
+            }
+        };
+
+        // Math.round 四舍五入进行取整
+        // Math.ceil 靠上取整
+        // Math.floor 靠下取整
+        var setSlideNumber = function (offset) {
+            var round = offset ? (deltaX < 0 ? 'ceil' : 'floor') : 'round';
+            slideNumber = Math[round](getScroll() / (scrollableArea /( slider.children.length - 2)));
+            slideNumber += offset;
+            slideNumber = Math.min(slideNumber, 0);
+            slideNumber = Math.max(-(slider.children.length - 2), slideNumber);
+        };
+
+        var nextSlider = function(){
+            offsetX = slideNumber * sliderWidth;
+
+            animated = true;
+            var time = 300;
+            var inteval = 10;
+            var speed = -sliderWidth/(time/inteval);
+            var scroll = getScroll();
+           /* slider.style.webkitTransform = 'translate3d(' + offsetX + 'px,0,0)';
+            if(scroll < -912){
+                slider.style.webkitTransform = 'translate3d(-304px,0,0)';
+                slideNumber = -1;
+            }*/
+
+            var go = function (){
+                if ( (speed > 0 && parseInt(getScroll()) < offsetX) || (speed < 0 && parseInt(getScroll()) > offsetX)) {
+                    slider.style.webkitTransform = 'translate3d(' + (getScroll() + speed)  + 'px,0,0)';
+                    setTimeout(go, inteval);
+                }
+                else {
+                    slider.style.webkitTransform = 'translate3d(' + offsetX + 'px,0,0)';
+                    if(scroll < -1064 || slideNumber <= -4){
+                        slider.style.webkitTransform = 'translate3d(-304px,0,0)';
+                        slideNumber = -1;
+                    }
+                    if(scroll > -304 || slideNumber > -1){
+                        slider.style.webkitTransform = 'translate3d(-912px,0,0)';
+                        slideNumber = -3;
+                    }
+
+                    animated = false;
+                }
+            }
+            go();
+            //图片指示
+            changeIndicator(slideNumber);
+        };
+
+        var autoSlide = function(){
+            timer = setInterval(function(){
+
+                slideNumber--;
+
+                nextSlider();
+            },2000);
+        };
+
+        var onTouchStart = function (e) {
+            clearInterval(timer);
+            timer = null;
+            slider = getSlider(e.target);
+
+            // 如果不做这层限制会出现，当手指触摸到其他位置时，找不到轮播区域，自动轮播会失效
+            if (!slider) {
+                slider = document.getElementsByClassName('slide-group')[0];
+                return;
+            }else {
+
+            }
+
+            isScrolling    = undefined;
+            resistance     = 1;
+            lastSlide      = -(slider.children.length - 1);
+            startTime      = +new Date();
+            pageX          = e.touches[0].pageX;
+            pageY          = e.touches[0].pageY;
+            deltaX         = 0;
+            deltaY         = 0;
+
+            setSlideNumber(0);
+
+            slider.style['-webkit-transition-duration'] = 0;
+
+        };
+
+        var onTouchMove = function (e) {
+
+            if (e.touches.length > 1 || !slider) {
+                return; // Exit if a pinch || no slider
+            }
+
+            deltaX = e.touches[0].pageX - pageX;
+            deltaY = e.touches[0].pageY - pageY;
+            pageX  = e.touches[0].pageX;
+            pageY  = e.touches[0].pageY;
+
+            if (typeof isScrolling === 'undefined') {
+                isScrolling = Math.abs(deltaY) > Math.abs(deltaX);
+            }
+
+            if (isScrolling) {
+                return;
+            }
+
+            offsetX = (deltaX / resistance) + getScroll();
+
+            e.preventDefault();
+
+            resistance = 1;
+
+            /*resistance = slideNumber === 0         && deltaX > 0 ? (pageX / sliderWidth) + 1.25 :
+                    slideNumber === lastSlide && deltaX < 0 ? (Math.abs(pageX) / sliderWidth) + 1.25 : 1;*/
+
+            slider.style.webkitTransform = 'translate3d(' + offsetX + 'px,0,0)';
+        };
+
+        var onTouchEnd = function (e) {
+            if (!slider || isScrolling) {
+                return;
+            }
+            setSlideNumber(
+                    (+new Date()) - startTime < 1000 && Math.abs(deltaX) > 15 ? (deltaX < 0 ? -1 : 1) : 0
+            );
+            nextSlider();
+            autoSlide();
+        };
+
+        window.addEventListener('touchstart', onTouchStart);
+        window.addEventListener('touchmove', onTouchMove);
+        window.addEventListener('touchend', onTouchEnd);
+        autoSlide();
+
+    }());
+</script>
+</body>
+</html>
